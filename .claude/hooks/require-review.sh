@@ -2,11 +2,12 @@
 # PreToolUse hook for Bash.
 # Constraint: a `git commit` is refused until .claude/.reviewed exists for the current staged diff.
 # If you remove this file, Claude can commit without running the review-team skill.
+# Matches the raw stdin JSON on purpose: parsing it with python3 or jq would let every commit through
+# on a machine where that tool is missing. It still only sees the literal text "git commit" (see README).
 
 input=$(cat)
-cmd=$(printf '%s' "$input" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("tool_input",{}).get("command",""))' 2>/dev/null)
 
-case "$cmd" in
+case "$input" in
   *"git commit"*) ;;
   *) exit 0 ;;
 esac
