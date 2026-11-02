@@ -1,4 +1,6 @@
-# Claude Code Review Team (from the video "I Gave Claude Code a Review Team: 3 Subagents + 1 Hook")
+# Claude Code Review Team
+
+Video walkthrough (public from 2026-11-11): https://www.youtube.com/watch?v=7JK8book1yw
 
 Three reviewer subagents read every staged diff in parallel. A Hook blocks the commit until all three pass.
 
@@ -30,3 +32,20 @@ Writing the marker touches `.claude/`, so Claude asks once for permission. Appro
 - Change the three jobs to the things your team keeps missing in review. Keep one job per agent, and keep the `PASS`/`FAIL` first line so the Skill can read it.
 - Keep reviewer tools read-only. A reviewer that can edit files is not a reviewer.
 - Give the Skill a name nothing else on your machine has. A personal Skill with the same name wins silently.
+
+## What the Hook does not stop
+
+It is a guardrail against forgetting, not a security boundary.
+
+- It matches the text `git commit`. `git -C . commit`, `git -c key=value commit` and aliases are not recognised. A command that only mentions the text, such as `grep -r "git commit" docs`, is blocked.
+- The marker proves that a file with the right hash exists, not that the reviewers ran.
+- The hash covers the staged diff when the command starts. `git commit -a` or `git add x && git commit` can include changes the review never saw.
+- If the script cannot start, Claude Code shows a `hook error` notice and the commit goes through. On Claude Code v2.1.295 or later, add `"onFailure": "block"` to the hook entry to block instead.
+- The deny rules match command text too. They stop the spellings listed, not every way to force-push or delete.
+
+## Changed after the video (2026-11-02)
+
+- The hook path in `settings.json` is quoted. Before, a project path with a space stopped the Hook from starting, and commits went through.
+- The Hook no longer needs python3. Before, a machine without python3 let every commit through.
+- `Bash(git branch*)` and `Bash(rg *)` are no longer allowed without asking. They also matched `git branch -D` and `rg --pre`, which runs a program. Read-only commands such as `ls`, `cat`, `grep` and read-only `git` run without a prompt anyway.
+- More spellings of force-push and `rm -rf` are denied.
