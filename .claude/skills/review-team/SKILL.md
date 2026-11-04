@@ -4,7 +4,7 @@ description: Run before any git commit. Sends the staged diff to three reviewer 
 ---
 
 1. Run `git diff --staged`. If it is empty, say so and stop.
-2. Launch these three subagents **in parallel, in one message**, each with the task the user asked for in the prompt:
+2. Launch these three subagents **in parallel, in one message**. Give each one the task the user asked for and the full output of step 1, pasted into its prompt. The reviewers have no Bash, so they cannot run git themselves:
    - `bug-hunter`
    - `secret-scanner`
    - `scope-checker`
