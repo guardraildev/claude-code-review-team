@@ -1,6 +1,6 @@
 # Claude Code Review Team
 
-Video walkthrough (public from 2026-11-11): https://www.youtube.com/watch?v=7JK8book1yw
+Video walkthrough (public from 2026-11-11): https://www.youtube.com/watch?v=yXan-UcmS60
 
 Three reviewer subagents read every staged diff in parallel. A Hook blocks the commit until all three pass.
 
