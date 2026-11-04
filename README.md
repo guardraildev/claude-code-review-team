@@ -6,10 +6,10 @@ Three reviewer subagents read every staged diff in parallel. A Hook blocks the c
 
 | File | What it does |
 |---|---|
-| `.claude/agents/bug-hunter.md` | Subagent. Bugs only: wrong conditions, off-by-one, dropped error paths. Read-only tools, `sonnet`, 8 turns max |
-| `.claude/agents/secret-scanner.md` | Subagent. Keys, tokens, passwords, emails, hostnames. Never repeats the secret. `haiku`, 6 turns max |
-| `.claude/agents/scope-checker.md` | Subagent. Compares every hunk against the task you asked for. Flags drive-by renames, import reordering, extra comments, new dependencies |
-| `.claude/skills/review-team/SKILL.md` | Skill. Runs `git diff --staged`, launches the three subagents **in parallel, in one message**, shows one table, and writes the marker only when all three say PASS |
+| `.claude/agents/bug-hunter.md` | Subagent. Bugs only: wrong conditions, off-by-one, dropped error paths. Tools: Read, Grep, Glob (no Bash, no Edit). `sonnet`, 8 turns max |
+| `.claude/agents/secret-scanner.md` | Subagent. Keys, tokens, passwords, emails, hostnames. Never repeats the secret. Tools: Read, Grep, Glob. `haiku`, 6 turns max |
+| `.claude/agents/scope-checker.md` | Subagent. Compares every hunk against the task you asked for. Flags drive-by renames, import reordering, extra comments, new dependencies. Tools: Read, Grep, Glob |
+| `.claude/skills/review-team/SKILL.md` | Skill. Runs `git diff --staged`, pastes it into each reviewer's prompt, launches the three subagents **in parallel, in one message**, shows one table, and writes the marker only when all three say PASS |
 | `.claude/hooks/require-review.sh` | Hook (PreToolUse on Bash). Refuses `git commit` unless `.claude/.reviewed` holds the hash of the current staged diff. Consumes the marker on success |
 | `.claude/settings.json` | Read-only commands allowed without prompts, a few denied, and the Hook registration |
 | `CLAUDE.md` | Branch, staging, secrets and scope rules Claude reads every session |
@@ -30,7 +30,7 @@ Writing the marker touches `.claude/`, so Claude asks once for permission. Appro
 ## Make it yours
 
 - Change the three jobs to the things your team keeps missing in review. Keep one job per agent, and keep the `PASS`/`FAIL` first line so the Skill can read it.
-- Keep reviewer tools read-only. A reviewer that can edit files is not a reviewer.
+- Keep reviewer tools to Read, Grep and Glob. A reviewer that can edit files is not a reviewer. Don't add `Bash(git diff*)` to an agent's `tools` to give it git diff: in our test it did not limit Bash, and the reviewer still ran `ls` and `git status`. That is why the Skill pastes the diff in.
 - Give the Skill a name nothing else on your machine has. A personal Skill with the same name wins silently.
 
 ## What the Hook does not stop
@@ -42,6 +42,7 @@ It is a guardrail against forgetting, not a security boundary.
 - The hash covers the staged diff when the command starts. `git commit -a` or `git add x && git commit` can include changes the review never saw.
 - If the script cannot start, Claude Code shows a `hook error` notice and the commit goes through. On Claude Code v2.1.295 or later, add `"onFailure": "block"` to the hook entry to block instead.
 - The deny rules match command text too. They stop the spellings listed, not every way to force-push or delete.
+- The Skill pastes the diff into each reviewer's prompt. If Claude copies it wrong, a reviewer can report a line that is not in the diff. Check findings against `git diff --staged`.
 
 ## Changed after the video (2026-11-02)
 
@@ -49,3 +50,8 @@ It is a guardrail against forgetting, not a security boundary.
 - The Hook no longer needs python3. Before, a machine without python3 let every commit through.
 - `Bash(git branch*)` and `Bash(rg *)` are no longer allowed without asking. They also matched `git branch -D` and `rg --pre`, which runs a program. Read-only commands such as `ls`, `cat`, `grep` and read-only `git` run without a prompt anyway.
 - More spellings of force-push and `rm -rf` are denied.
+
+## Changed on 2026-11-04
+
+- The three reviewers no longer have Bash. `Bash(git diff*)` in an agent's `tools` did not limit Bash to git diff: a reviewer ran `ls` and `git status`, and a file-creating command was stopped only by the normal permission prompt. Now their tools are Read, Grep and Glob, and the Skill pastes the staged diff into each prompt.
+- The Hook runs through `bash` in `settings.json`, so it works even if the file lost its executable bit. Files uploaded through the GitHub web page don't keep it.
